@@ -8,6 +8,7 @@ Created on Mon Sep  5 17:58:47 2016
 import numpy as np
 import cv2
 from skimage.feature import peak_local_max
+from skimage.filters import laplace
 from scipy import ndimage as ndi
 
 def f(values):
@@ -29,7 +30,7 @@ def preprocess(img_RGB):
     S = hsv[:,:,1]
     V = hsv[:,:,2]
     c3_b = cv2.blur(c3,(3,3))
-    V_edge = cv2.Laplacian(V)
+    V_edge = laplace(V)
     return c3_b, S, V, V_edge
     
 def seedDetect(c3_b,S,V,k,Tv,Ts):
@@ -38,28 +39,22 @@ def seedDetect(c3_b,S,V,k,Tv,Ts):
 #    Ts = 0.02
     c3_mean = np.mean(c3_b)
     kernel = np.ones((k,k))
-    c3_mean = ndi.generic_filter(c3_b,f,kernel,mode='constant',cval=0)
-    V_mean = ndi.generic_filter(V,f,kernel,mode='constant',cval=0)
-    S_mean = ndi.generic_filter(S,f,kernel,mode='constant',cval=0)
+    c3_mean = ndi.generic_filter(c3_b,f,footprint=kernel,mode='constant',cval=0)
+    V_mean = ndi.generic_filter(V,f,footprint=kernel,mode='constant',cval=0)
+    S_mean = ndi.generic_filter(S,f,footprint=kernel,mode='constant',cval=0)
     c3_gt_mean = c3_mean > c3_mean
-    V_gt_mean = V_mean > Tv
+    V_gt_mean = V_mean < Tv
     S_gt_mean = S_mean > Ts
     coordinates = peak_local_max(c3_b, min_distance=k)
     shadow_inds = np.empty((0,2))
-    for (i,j) in coordinates:
+    for c in coordinates:
+        i = c[0]
+        j = c[1]
         if c3_gt_mean[i,j]:
             if V_gt_mean[i,j]:
                 if S_gt_mean[i,j]:
-                    shadow_inds = np.append(shadow_inds, [[i,j]])
-                    shadow_inds = np.append(shadow_inds, [[i+1,j]])
-                    shadow_inds = np.append(shadow_inds, [[i-1,j]])
-                    shadow_inds = np.append(shadow_inds, [[i,j+1]])
-                    shadow_inds = np.append(shadow_inds, [[i,j-1]])
-                    shadow_inds = np.append(shadow_inds, [[i+1,j+1]])
-                    shadow_inds = np.append(shadow_inds, [[i-1,j-1]])
-                    shadow_inds = np.append(shadow_inds, [[i+1,j-1]])
-                    shadow_inds = np.append(shadow_inds, [[i-1,j+1]])
+                    seed_inds = np.append(shadow_inds, [[i,j]])
                     
-    return shadow_inds
+    return seed_inds
             
     
