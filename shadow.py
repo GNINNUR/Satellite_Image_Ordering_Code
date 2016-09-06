@@ -33,10 +33,18 @@ def preprocess(img_RGB):
     V_edge = laplace(V)
     return c3_b, S, V, V_edge
     
+def window(i,j,n):
+    w_inds = np.empty((0,2))
+    for ii in np.arange(-n,n):
+        for jj in np.arange(-n,n):
+            w_inds = np.append(w_inds, [[i+ii,j+jj]],0)
+    return w_inds
+    
 def seedDetect(c3_b,S,V,k,Tv,Ts):
-#    k = 5
+#    k = 5 # must be odd
 #    Tv = 0.35
 #    Ts = 0.02
+    n = (k-1)/2
     c3_mean = np.mean(c3_b)
     kernel = np.ones((k,k))
     c3_box = ndi.generic_filter(c3_b,f,footprint=kernel,mode='constant',cval=0)
@@ -46,15 +54,44 @@ def seedDetect(c3_b,S,V,k,Tv,Ts):
     V_lt_thresh = V_mean < Tv
     S_gt_thresh = S_mean > Ts
     coordinates = peak_local_max(c3_b, min_distance=k)
-    seed_inds = np.empty((0,2))
+    seeds = []
     for c in coordinates:
         i = c[0]
         j = c[1]
         if c3_gt_mean[i,j]:
             if V_lt_thresh[i,j]:
                 if S_gt_thresh[i,j]:
-                    seed_inds = np.append(seed_inds, [[i,j]],0)
+                    seed_inds = window(i,j,n)
+                    seeds.append(seed_inds)
                     
-    return seed_inds
-            
+    return seeds
+    
+def growRegion(c3,V,S,V_edge,shadow_inds,seeds,d0,k,Te,Tv,Ts):
+    n = (k-1)/2
+    c3_vals = np.array([c3[c[0],c[1]] for c in shadow_inds])
+    c3_mean = c3_vals.mean()
+    c3_std = c3_vals.std()
+    border_shadow_inds = shadow_inds
+    change_flag = 0
+    for c in shadow_inds:
+        i = c[0]
+        j = c[1]
+        border_pxls = window(i,j,n)
+        for p in border_pxls:
+            if p in shadow_inds:
+                continue
+            for s in seeds:
+                if p in s:
+                    continue
+            if (np.abs(c3[i,j]-c3_mean)/c3_std) < d0:
+                if V_edge[i,j] < Te:
+                    if V[i,j] < Tv:
+                        if S[i,j] > Ts:
+                            change_flag = 1
+                            border_shadow_inds = np.append(border_shadow_inds,[p],0) 
+    new_shadow_inds = border_shadow_inds
+    if change_flag:
+        new_shadow_inds = growRegion(c3,V,S,V_edge,border_shadow_inds,seeds,d0,k,Te,Tv,Ts)
+    return new_shadow_inds
+                            
     

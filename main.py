@@ -44,4 +44,6 @@ img5_name = "set5_5.jpeg"
 img1_small, img1_grsmall = prepareImg(pathToImages,img1_name)
 
 img1_c3_b, img1_S, img1_V, img1_V_edge = shadow.preprocess(img1_small)
-img1_seed_inds = shadow.seedDetect(img1_c3_b,img1_S,img1_V,5,89,5)
+img1_seeds = shadow.seedDetect(img1_c3_b,img1_S,img1_V,5,89,5)
+shadow_inds = shadow.growRegion(img1_c3_b,img1_V,img1_S,img1_V_edge,\
+                                img1_seeds[0],img1_seeds,3,5,76,89,5)
