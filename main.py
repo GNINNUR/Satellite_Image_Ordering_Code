@@ -9,7 +9,6 @@ from alignment import findTransform
 import shadow
 import numpy as np
 import cv2
-import os
     
 def prepareImg(pathToImages,img_name):
     img_path = pathToImages + img_name
@@ -44,4 +43,5 @@ img5_name = "set5_5.jpeg"
 
 img1_small, img1_grsmall = prepareImg(pathToImages,img1_name)
 
-img1_c3 = shadow.RGB2C3(img1_small)
+img1_c3_b, img1_S, img1_V, img1_V_edge = shadow.preprocess(img1_small)
+img1_shadow_inds = shadow.seedDetect(img1_c3_b,img1_S,img1_V,5,0.35,0.02)
